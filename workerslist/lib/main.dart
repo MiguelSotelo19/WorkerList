@@ -42,28 +42,85 @@ class _MyHomePageState extends State<MyHomePage> {
   TextEditingController apellidosController = TextEditingController();
   TextEditingController edadController = TextEditingController(); 
 
+  void _showAlert(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("OK"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _addWorker() {
-    if (nombreController.text.isNotEmpty && 
-        apellidosController.text.isNotEmpty && 
-        edadController.text.isNotEmpty) {
-      setState(() {
-        int newId = workers.isNotEmpty ? workers.last.id + 1 : 1;
-        workers.add(Worker(
-            id: newId,
-            nombre: nombreController.text,
-            apellidos: apellidosController.text,
-            edad: int.tryParse(edadController.text) ?? 0));
-        nombreController.clear();
-        apellidosController.clear();
-        edadController.clear();
-      });
+    if (nombreController.text.trim().isEmpty) {
+      _showAlert("Error", "El nombre no puede estar vacío");
+      return;
     }
+
+    if (apellidosController.text.trim().isEmpty) {
+      _showAlert("Error", "Los apellidos no pueden estar vacíos");
+      return;
+    }
+
+    if (edadController.text.trim().isEmpty) {
+      _showAlert("Error", "La edad no puede estar vacía");
+      return;
+    }
+
+    int? edad = int.tryParse(edadController.text.trim());
+    
+    if (edad == null) {
+      _showAlert("Error", "La edad debe ser un número válido");
+      return;
+    }
+
+    if (edad < 18) {
+      _showAlert("Error", "Solo se admiten mayores de edad (18+ años)");
+      return;
+    }
+
+    if (edad < 0) {
+      _showAlert("Error", "La edad no puede ser un número negativo");
+      return;
+    }
+
+    int newId = workers.isNotEmpty ? workers.last.id + 1 : 1;
+    
+    while (workers.any((worker) => worker.id == newId)) {
+      newId++;
+      _showAlert("Advertencia", "ID duplicado detectado, se asignó nuevo ID: $newId");
+    }
+
+    setState(() {
+      workers.add(Worker(
+          id: newId,
+          nombre: nombreController.text.trim(),
+          apellidos: apellidosController.text.trim(),
+          edad: edad));
+      nombreController.clear();
+      apellidosController.clear();
+      edadController.clear();
+    });
+
+    _showAlert("Éxito", "Trabajador agregado correctamente");
   }
 
   void _deleteLastWorker() {
     setState(() {
       if (workers.isNotEmpty) {
         workers.removeLast();
+        _showAlert("Éxito", "Último trabajador eliminado");
+      } else {
+        _showAlert("Error", "No hay trabajadores para eliminar");
       }
     });
   }
@@ -76,7 +133,7 @@ class _MyHomePageState extends State<MyHomePage> {
           final worker = workers[index];
           return ListTile(
             title: Text('${worker.nombre} ${worker.apellidos}'),
-            subtitle: Text('Edad: ${worker.edad}'),
+            subtitle: Text('ID: ${worker.id} - Edad: ${worker.edad} años')
           );
         },
       ),
@@ -114,7 +171,8 @@ class _MyHomePageState extends State<MyHomePage> {
               controller: nombreController,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
-                labelText: "Nombre",
+                labelText: "Nombre *",
+                hintText: "Ingrese el nombre",
               ),
             ),
             const SizedBox(height: 8),
@@ -123,7 +181,8 @@ class _MyHomePageState extends State<MyHomePage> {
               controller: apellidosController,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
-                labelText: "Apellidos",
+                labelText: "Apellidos *",
+                hintText: "Ingrese los apellidos",
               ),
             ),
             const SizedBox(height: 8),
@@ -133,8 +192,8 @@ class _MyHomePageState extends State<MyHomePage> {
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
-                labelText: "Edad (18+ años)",
-                helperText: "Solo mayores de edad",
+                labelText: "Edad * (18+ años)",
+                hintText: "Ingrese la edad",
               ),
             ),
             const SizedBox(height: 16),
@@ -160,7 +219,7 @@ class _MyHomePageState extends State<MyHomePage> {
             const SizedBox(height: 16),
             
             Text(
-              'Contador: $_counter',
+              'Total trabajadores: ${workers.length}',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ],
